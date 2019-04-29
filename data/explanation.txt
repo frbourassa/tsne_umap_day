@@ -1,0 +1,2 @@
+The formatted and pickled DataFrames will be saved here. You can also
+put your original data files here if you want. 

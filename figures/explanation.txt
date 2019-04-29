@@ -1,0 +1,3 @@
+Save figures in this folder by prepending "figures/"
+to the save path in the savefig function.
+Also remember to save figures preferably in the pdf format. 
