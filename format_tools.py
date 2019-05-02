@@ -44,11 +44,130 @@ def load_object(filename):
 ###
 # Functions to create a proper DataFrame
 ###
-# From an ndarray where different axes represent different conditions or observables
-def df_from_ndarray():
+# From an ndarray where different axes represent different conditions
+# and observables are lined up on one axis.
+def df_from_ndarray(ndarray, labels_dict_axis, observables_axis=-1,
+                    obs_names=None, names=None):
+    """
+    Create a DataFrame from a multidimensional array in which all the data is.
+    Each axis of the array, except for one, should correspond to a different
+    experimental parameter (e.g. temperature, pressure, concentration,...),
+    and each index along that axis corresponds to a different value of that
+    parameter (e.g. 10 C, 20 C, 30 C, ...). The remaining axis corresponds to
+    observables; each index along that axis is a different observable.
+    Thus, specifying an index for each parameter axis fully specifies the
+    experimental conditions and gives a vector of observables for that set
+    of conditions.
+    If you have multiple repeats for the same condition, one parameter axis
+    can correspond to 'Repeats' or 'Samples'.
+    This way of specifying the conditions assumes that experiments were made
+    for all tuples in the cartesian product of the sets of parameter values.
+    If some combinations were not tested, NaNs can be put in those slices.
 
-# From multiple 2darrays corresponding to blocks of sample points
-def df_from_blocks(arrays, labels=[], observables=[], names=[]):
+    WARNING: will modify inplace labels_dict_axis and names.
+    Input a copy if needed
+
+    Args:
+        ndarray (np.ndarray): the n-dimensional array containing all datapoints
+        labels_dict_axis (dict of lists): dictionary of the parameter values
+            along each axis that specifies an experimental parameter.
+            Keys are the axes' numbers (axis 0, axis 1...).
+            The list at key i should have the length of axis i of the array.
+        observables_axis (int): the axis along which observables are specified.
+        obs_names (list of str): the names corresponding to the
+            observables along observables_axis.
+        names (dict of str): the names of the parameter axes
+            (e.g. 'temperature', 'pressure', etc. ).
+
+    Returns:
+        pd.DataFrame: the 2d DataFrame made by unraveling the axes
+            corresponding to parameters/experimental conditions.
+    """
+    ob = observables_axis  # shorthand notation
+
+    # Some dimensionality checks
+    if ndarray.ndim - 1 < len(labels_dict_axis):
+        raise ValueError(
+            "There are not enough axes in ndarray for the inputted labels")
+    if (obs_names is not None and ndarray.shape[ob] != len(obs_names)):
+        raise ValueError( "There must be one observable name per element " +
+            "on the observables_axis")
+    for i in labels_dict_axis.keys():
+        if i == (ob % ndarray.ndim):
+            raise ValueError(
+                "The observables should not be specified in labels_dict_axis")
+        if ndarray.shape[i] != len(labels_dict_axis[i]):
+            raise ValueError("The list of parameter values for axis {0} must\
+                \n have the same length as this axis, which is {1}".format(
+                    i, ndarray.shape[i]
+                ))
+    if (names is not None and len(names) != len(labels_dict_axis)):
+        raise ValueError(
+            "There must be one parameter name per axis in labels_dict_axis")
+    if observables_axis > ndarray.ndim - 1:
+        raise ValueError("Specified observables_axis isn't an existing axis")
+
+    nb_obs = ndarray.shape[ob]
+    # Hopefully, dimensions are correct now. Assemble the DataFrame.
+
+    # First, move the observables axis to the end, then unravel other axes
+    # so each row is a sample. The tricky part will then be to form tuples
+    # with the inputted conditions to identify each row. We need to understand
+    # very well how reshape works when dimensions are reduced.
+
+    # Cyclic permutation to the right: the number of increments
+    # is given by the following formula:
+    shift = ((ndarray.ndim - 1) - ob) % ndarray.ndim
+    # With numpy, one increment to the right at a time
+    for i in range(shift):
+        ndarray = np.moveaxis(ndarray, -1, 0)
+
+    # We also need to permute the indices in dictionary keys
+    labels_dict_axis = {((i + shift) % ndarray.ndim):labels_dict_axis[i]
+                        for i in labels_dict_axis.keys()}
+    if names is None:
+        names = {}
+        for i in range(ndarray.ndim - 1):
+            original_i = (i - shift) % ndarray.ndim
+            names[i] = "Axis {}".format(original_i)
+    else:
+        names = {((i + shift) % ndarray.ndim):names[i]
+                for i in names.keys()}
+
+    # Check if some axes are left unnamed. Create labels for them then.
+    if len(labels_dict_axis) < ndarray.ndim - 1:
+        for i in range(ndarray.ndim - 1):  # exclude last axis (observables)
+            if i not in labels_dict_axis.keys():
+                labels_dict_axis[i] = range(ndarray.shape[i])
+            if i not in names.keys():
+                # Happens only if names was not None initially
+                # Original axis number, for identification
+                original_i = (i - shift) % ndarray.ndim
+                names[i] = "Axis {}".format(original_i)
+
+    # When reshaping, inner levels are kept together first. If we have 3 axes,
+    # and we reshape to two axes, then adjacent rows along axis 1 will be kept
+    # together, then different arrays along axis 0 (outer) will be stacked.
+    # So labels for inner axes vary faster (at each row, for axis -2).
+    number_samples = np.prod(ndarray.shape[:-1])
+    ndarray = ndarray.reshape(number_samples, nb_obs)
+
+    # use from_product. The sortorder argument can be left to default
+    # because we have reindexed the label dictionaries. We need lists
+    labels_list_axis = [labels_dict_axis[i] for i in sorted(labels_dict_axis)]
+    names_list = [names[i] for i in sorted(names)]
+    idx = pd.MultiIndex.from_product(labels_list_axis, names=names_list)
+
+    if obs_names is not None:
+        cols = pd.Index(obs_names, name="Observables")
+    else:
+        cols = range(nb_obs)
+
+    # Use the MultiIndex to index the 2d ndarray
+    return pd.DataFrame(ndarray, index=idx, columns=cols)
+
+# From multiple 2darrays corresponding to groups of sample points
+def df_from_blocks(arrays, labels, observables=None, names=[]):
     """
     Create a DataFrame by stacking the 2darrays in the list. Columns of each
     array must correspond to the same observables, identified in the
@@ -69,7 +188,9 @@ def df_from_blocks(arrays, labels=[], observables=[], names=[]):
             in each column (e.g. ["v_x", "v_y", "v_z", "r_x", ...]).
         names (list of str): optional. The name of the property(ies) that
             identify the blocks (e.g. ["Temperature" if blocks are specified
-            by labels = ["10 C", "20 C", ...]).
+            by labels = ["10 C", "20 C", ...]). If labels are tuples, then
+            names should have the same length as the tuples
+            (to have one name per level).
     Returns:
         (pd.DataFrame): the DataFrame made of a vstack of arrays.
     """
@@ -80,7 +201,7 @@ def df_from_blocks(arrays, labels=[], observables=[], names=[]):
             "All 2darrays must have the same number of elements along axis 1")
     else:
         nb_observables = nb_observables[0]  # now an int
-    if (observables != [] and nb_observables[0] != len(observables)):
+    if (observables is not None and nb_observables != len(observables)):
         raise ValueError("There must be one observable name per array column")
 
     nb_blocks = len(arrays)
@@ -97,4 +218,22 @@ def df_from_blocks(arrays, labels=[], observables=[], names=[]):
                 "There must be one name per property in each label tuple")
 
     # The inputted values should be OK now, hopefully.
-    
+    # Construct indexes for the samples in each array
+    frames = []
+    for i in range(len(arrays)):
+        idx = pd.Index(range(arrays[i].shape[0]), name="Sample")
+        frames.append(pd.DataFrame(arrays[i], columns=observables, index=idx))
+    df = pd.concat(frames, keys=labels, names=names)
+
+    # If there is only one sample per condition,
+    # we don't want the "Sample" level since it is redundant
+    if len(df.index.levels[-1]) == 1:
+        df.reset_index(level=-1, inplace=True, drop=True)
+
+    return df
+
+# To add more information in the DataFrame index by regrouping labels
+# of some level under another level. In other words, add a level to columns or
+# index of the dataframe by categorizing a preexisting level.
+def regroup_levels(frame, axis=1):
+    pass
