@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from format_tools import df_from_blocks, df_from_ndarray
+from format_tools import df_from_blocks, df_from_ndarray, regroup_levels
 
 def test_ndimarray():
     # Setup a simple example: conditions are T and p, obs are first axis
@@ -56,7 +56,8 @@ def test_ndimarray():
     print(df)
 
     # Another try: observables are in the last axis, so contiguous.
-    arr = np.arange(3*4*5).reshape(4, 5, 3)
+    arr = np.arange(3*4*5).reshape(4, 5, 3).astype(float)
+    arr[1, 2:4, :] = np.array([[np.nan]*3]*2)
     obs_axis = -2
     obs_names2 = ["vx", 'vy', 'vz', 'dum', 'my']
     names = {0:"Temperature", 1:"Pressure"}
@@ -121,6 +122,38 @@ def test_blocks():
 
     df_from_blocks(blocks, labels=labels)
 
+def test_regroup():
+    # Create a dataframe first.
+    # Conditions are T and p, obs are first axis
+    arr = np.arange(6*4*5).reshape(6, 4, 5)
+    obs_axis = 0
+    names = {1:"Temperature", 2:"Pressure"}
+    param_labels = {
+        1: ["10 C", "20 C", "30 C", "40 C"],
+        2: ["{} atm".format(i) for i in range(5)]
+    }
+    obs_names = ['vx', 'vy', 'vz'] + ['x', 'y', 'z']
+    df = df_from_ndarray(arr, param_labels, obs_axis, obs_names, names)
+
+    # Regrouping x, y, and z coordinates
+    groups = {"X":['x', 'vx'], "Y":['y', 'vy'], "Z":['z', 'vz']}
+    ret = regroup_levels(df, groups, level_group="Observables", axis=1, name="Dimension")
+    print(ret)
+    print(ret.columns)
+
+    # Regrouping temperatures by heat.
+    groups = {"cold":['10 C', '20 C'], "hot":['30 C', '40 C']}
+    ret = regroup_levels(df, groups, level_group="Temperature", axis=0, name="Feeling")
+    print(ret)
+
+    # Regrouping pressures by effect on a human
+    groups = {"burst":['0 atm'], "fine":["1 atm"],
+        "faint":["2 atm"], "crush":['3 atm', '4 atm']}
+    #print(df.xs("0 atm", level="Pressure", axis=0))
+    ret = regroup_levels(df, groups, level_group="Pressure", axis=0, name="Effect")
+    print(ret)
+
 if __name__ == "__main__":
     #test_blocks()
-    test_ndimarray()
+    #test_ndimarray()
+    test_regroup()

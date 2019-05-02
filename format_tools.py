@@ -161,7 +161,7 @@ def df_from_ndarray(ndarray, labels_dict_axis, observables_axis=-1,
     if obs_names is not None:
         cols = pd.Index(obs_names, name="Observables")
     else:
-        cols = range(nb_obs)
+        cols = pd.Index(range(nb_obs), name="Observables")
 
     # Use the MultiIndex to index the 2d ndarray
     return pd.DataFrame(ndarray, index=idx, columns=cols)
@@ -233,7 +233,36 @@ def df_from_blocks(arrays, labels, observables=None, names=[]):
     return df
 
 # To add more information in the DataFrame index by regrouping labels
-# of some level under another level. In other words, add a level to columns or
-# index of the dataframe by categorizing a preexisting level.
-def regroup_levels(frame, axis=1):
-    pass
+# of some level under another level.
+def regroup_levels(frame, groups, level_group=None, axis=1, name=None):
+    """
+    In other words, add a level to columns or index of the dataframe
+    by grouping the labels of a preexisting level.
+
+    Args:
+        frame (pd.DataFrame): the DataFrame to index better.
+        groups (dict): a dictionary where keys are labels for the new grouping
+            level, and values are lists of labels of the level to group that
+            should be grouped under their key.
+        level_group (str or int): the level to group
+        axis (int): 0 or 1, rows or columns. 1 by default.
+        name (str): the name of the new grouping level. Optional
+    """
+    # Check if the axis to group is Index (only one level) or MultiIndex
+    idx = frame.index if axis == 0 else frame.columns
+    if isinstance(idx, pd.MultiIndex):
+        if level_group is None:
+            raise ValueError(
+                "The index on this axis is a MultiIndex; must specify a level")
+    else:
+        level_group = None
+
+    # Split the dataframe, then concatenate with a new level
+    blocks = {}
+    for gp in groups.keys():
+        subgroups = {k:frame.xs(k, level=level_group, axis=axis)
+                    for k in groups[gp]}
+        blocks[gp] = pd.concat(subgroups, names=[level_group], axis=axis, copy=False)
+
+    # TODO: update the order of the name
+    return pd.concat(blocks, axis=axis, names=[name] + idx.names, copy=False)
