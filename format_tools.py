@@ -254,8 +254,17 @@ def regroup_levels(frame, groups, level_group=None, axis=1, name=None):
         if level_group is None:
             raise ValueError(
                 "The index on this axis is a MultiIndex; must specify a level")
+        # The order of levels will be altered if an inner level is grouped
+        original_names = list(idx.names)
+        try:
+            original_names.remove(level_group)
+        except ValueError:
+            raise ValueError("{} is not a valid level in the \
+                DataFrame".format(level_group))
+    # If we only have an Index, not a MultiIndex
     else:
         level_group = None
+        original_names = []  # We have an Index
 
     # Split the dataframe, then concatenate with a new level
     blocks = {}
@@ -264,5 +273,6 @@ def regroup_levels(frame, groups, level_group=None, axis=1, name=None):
                     for k in groups[gp]}
         blocks[gp] = pd.concat(subgroups, names=[level_group], axis=axis, copy=False)
 
-    # TODO: update the order of the name
-    return pd.concat(blocks, axis=axis, names=[name] + idx.names, copy=False)
+    # Update the order of the level names, return the concatenation of blocks
+    final_names = [name, level_group] + original_names
+    return pd.concat(blocks, axis=axis, names=final_names, copy=False)
