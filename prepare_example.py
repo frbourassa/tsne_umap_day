@@ -30,12 +30,12 @@ if __name__ == "__main__":
     cols_use = range(1, cell_names.size + 1)
 
     # Import the raw data with pandas, as a sparse, because a lot of zeros.
-    df = csv_to_sparse(file_raw_data, chunksize=2, fill=0,
-            dtype=np.int16, engine="c", nrows=5, header=None, skiprows=[0],
+    df = csv_to_sparse(file_raw_data, chunksize=10000, fill=0,
+            dtype=np.int16, engine="c", header=None, skiprows=[0],
             usecols=cols_use, index_col=None)
     print("\nThis is the dtypes:")
     print(df.dtypes)
-    print("\nMemory usage:")
+    print("\nMemory usage of the full data frame:")
     print(df.memory_usage(deep=True).sum()/1024**2, "MB")
     print("\nDataFrame: ")
     print(df)
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     # Now, save each stimulation value block separately.
     blocks = [df.loc[a] for a in different_times]
     for i, b in enumerate(blocks):
-        bname = "data/blocks/" + access_code + "_stim_test_" + different_times[i] + ".pkl"
+        bname = "data/blocks/" + access_code + "_stim_" + different_times[i] + ".pkl"
         save_object(b, bname)
 
     # Save information about the data, to be able to concat the blocks
