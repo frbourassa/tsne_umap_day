@@ -1,3 +1,9 @@
+# -*- coding:utf-8 -*-
+"""
+@author: frbourassa
+May 3, 2019
+"""
+
 import numpy as np
 import pandas as pd
 

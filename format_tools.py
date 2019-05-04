@@ -1,9 +1,10 @@
+# -*- coding:utf-8 -*-
 """
 Module containing some wrapper functions to help organize your dataset into
 a single DataFrame where each column contains an observable and each row,
 a different sample, i.e. a vector in the phase space of observables.
 @author: frbourassa
-April 28, 2019
+May 3, 2019
 """
 import numpy as np
 import pandas as pd
@@ -44,6 +45,32 @@ def load_object(filename):
 ###
 # Functions to create a proper DataFrame
 ###
+# To import a large csv file by chunks and into sparse arrays, to avoid
+# filling the RAM
+def csv_to_sparse(fi, chunksize=1000, fill=0, **kwargs):
+    """ To import a large csv file to a sparse array,
+        chunk by chunk, to reduce memory spikes.
+        Inspired by and answer from the user kilojoules on StackOverflow:
+            https://stackoverflow.com/questions/40454362/pandas-read-csv-1-2gb-file-out-of-memory-on-vm-with-140gb-ram
+            (consulted May 4, 2019)
+
+        Args:
+            fi (str): the name of the csv file to open (including "".csv")
+            chunksize (int): number of rows to import at a time, default 1000
+            fill (object): the value that occurs very often in the csv file,
+                usually zeros or NaNs .
+            kwargs: any keyword argument that can be passed to pd.read_csv,
+                except chunksize.
+        Returns:
+            (pd.core.sparse.frame.SparseDataFrame):
+                a sparse version of the data in the csv (memory efficient)
+    """
+    df = pd.DataFrame()
+    for chunk in pd.read_csv(fi, chunksize=chunksize, **kwargs):
+        chunk = chunk.to_sparse(fill_value=fill)
+        df = pd.concat([df, chunk], ignore_index=True)
+    return df
+
 # From an ndarray where different axes represent different conditions
 # and observables are lined up on one axis.
 def df_from_ndarray(ndarray, labels_dict_axis, observables_axis=-1,
