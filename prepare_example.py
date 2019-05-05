@@ -74,12 +74,18 @@ def load_raw_csv(file_raw_data, raw_file_pickle, starting_time):
     df.set_index(gene_names, inplace=True)
     df.index.name = "Gene"
     print("\nRows index: \n", df.index)
-    df.rename(columns=cell_names, inplace=True)
+    #df.rename(columns=cell_names, inplace=True)  # They are useless and take up memory
     df.columns.name = "Cell"
     print("Columns:\n", df.columns)
     del gene_names, cell_names  # free some memory
 
-    # Save a copy, in case the program crashes
+    print("Memory usage as dense:")
+    print(df.memory_usage(deep=True).sum()/1024**2, "MB")
+    df = df.to_sparse()
+    print("Memory usage as sparse:")
+    print(df.memory_usage(deep=True).sum()/1024**2, "MB")
+
+    # Save a sparse copy, in case the program crashes
     save_object(df, raw_file_pickle)
     inter_time3 = measure_time()
     print("Time taken to add the index: {} s".format(inter_time3 - inter_time2))
@@ -108,8 +114,22 @@ def reindex_save_plain_df(df, access_code, folder, types_end,
     inter_time4 = measure_time()
     print("Time taken to create MultiIndex of cell types: {} s".format(inter_time4 - inter_time3))
 
+    # Remove the cell names; they are useless and take up a lot of memory
+    print("Memory usage of the new MultiIndex with cell names: ")
+    print(celltypes_index.memory_usage(deep=True).sum()/1024**2, "MB")
+
+    df.reset_index(level='Cell', inplace=True, drop=True)
+
+    print("Memory usage of the MultiIndex without cell names: ")
+    print(celltypes_index.memory_usage(deep=True).sum()/1024**2, "MB")
+
+    inter_time4bis = measure_time()
+    print("Time taken to remove cell names : {}".format(inter_time4bis - inter_time4))
+
     # Transpose the frame: genes are now columns
     # MultiIndex the cells with the cell type assignment.
+    # Convert to a dense DataFrame, it will be faster to sort after.
+    df = df.to_dense()
     df = df.T
     inter_time5 = measure_time()
     print("Time taken to transpose: {} s".format(inter_time5 - inter_time4))

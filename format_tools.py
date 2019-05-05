@@ -71,7 +71,8 @@ def csv_to_sparse(fi, chunksize=1000, fill=0, **kwargs):
         df = pd.concat([df, chunk], ignore_index=True)
         print("Chunk {} done".format(count))
         count += 1
-    return df.to_sparse(fill_value=fill)
+    return df
+    #return df.to_sparse(fill_value=fill)
 
 # From an ndarray where different axes represent different conditions
 # and observables are lined up on one axis.
