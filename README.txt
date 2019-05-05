@@ -1,7 +1,12 @@
 This is a small repository created for the tSNE-UMAP day organized in Paul Francois' group on May 8, 2019. 
 
+## REQUIREMENTS
+Make sure that you have pandas >= 0.24.0. 
+
 ## FORMATTING DATA
-Use the format_tools.py functions to format your data into the desired pandas.DataFrame structure. We want a DataFrame where each column is a different observable and each row is a different sample point. Rows can be multi-indexed with pandas to give more information about the conditions corresponding to each sample point. For instance, if you have data about the positions and velocities of N particles in a box, at different temperatures and pressures, the final DataFrame might look like this:
+Use the format_data Jupyter notebook (which depends on format_tools.py functions) to format your data into the desired pandas.DataFrame structure.
+
+ We want a DataFrame where each column is a different observable and each row is a different sample point. Rows can be multi-indexed with pandas to give more information about the conditions corresponding to each sample point. For instance, if you have data about the positions and velocities of N particles in a box, at different temperatures and pressures, the final DataFrame might look like this:
 
 Observables                   vx  vy  vz   x   y    z
 Feeling Temperature Pressure                         
@@ -30,7 +35,10 @@ The rows are indexed with a MultiIndex, to specify each experimental parameter f
 
 Look at the API dcumentation to see the different functions available for formatting to this kind of DataFrame (df_from_ndarray and df_from_blocks). Of course, you are free to reformat your data manually if they do not suit your needs. 
 
-Another, more realistic example is provided with single-cell RNA sequencing data from Hrvatin S. et al. Single-cell analysis of experience-dependent transcriptomic states in the mouse visual cortex. Nature Neurosci., 2018. It was used in a paper that we have read in JC, La Manno G. et al. RNA velocity of single cells. Nature, 2018. 
+I wanted to provide a  more realistic example with single-cell RNA sequencing data from:
+	 Hrvatin S. et al. Single-cell analysis of experience-dependent transcriptomic states in the mouse visual cortex. Nature Neurosci., 2018. Data used in a paper that we have read in JC, La Manno G. et al. RNA velocity of single cells. Nature, 2018. 
+
+But the files are very large and I keep running into memory problems, so it might be uploaded in the next few days. 
 
 ## DIMENSIONAL REDUCTION
 Some functions might be provided in analyze_tools.py. Coming soon...

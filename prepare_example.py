@@ -102,8 +102,8 @@ def reindex_save_plain_df(df, access_code, folder, types_end,
     celltypes_index = pd.MultiIndex.from_frame(celltypes)
     del celltypes  # free some memory
     celltypes_index.rename("Cell", level=0, inplace=True)
-    print("\nNew MultiIndex: ")
-    print(celltypes_index)
+    print("\nNew MultiIndex: loaded. ")
+    # print(celltypes_index)  Don't do this! This is extremely long!
 
     inter_time4 = measure_time()
     print("Time taken to create MultiIndex of cell types: {} s".format(inter_time4 - inter_time3))
