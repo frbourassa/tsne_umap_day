@@ -7,6 +7,7 @@ import scipy as sp
 import pandas as pd
 from format_tools import csv_to_sparse, load_object, save_object
 from time import time as measure_time
+import gc
 
 if __name__ == "__main__":
     starting_time = measure_time()
@@ -30,11 +31,9 @@ if __name__ == "__main__":
     cols_use = range(1, cell_names.size + 1)
 
     # Import the raw data with pandas, as a sparse, because a lot of zeros.
-    df = csv_to_sparse(file_raw_data, chunksize=10000, fill=0,
+    df = csv_to_sparse(file_raw_data, chunksize=5100, fill=0,
             dtype=np.int16, engine="c", header=None, skiprows=[0],
             usecols=cols_use, index_col=None)
-    print("\nThis is the dtypes:")
-    print(df.dtypes)
     print("\nMemory usage of the full data frame:")
     print(df.memory_usage(deep=True).sum()/1024**2, "MB")
     print("\nDataFrame: ")
@@ -47,6 +46,11 @@ if __name__ == "__main__":
     df.rename(columns=cell_names, inplace=True)
     df.columns.name = "Cell"
     print(df.columns)
+
+    # Save a copy, in case the program crashes
+    save_object(df, file_raw_data)
+    gc.collect()  # make sure we don't have a leak. 
+    print("Now starting to reindex the DataFrame, importing cell_types")
 
     # Import the attributed cell types, which we'll use as row index.
     celltypes = pd.read_csv(file_cell_types, dtype="category")
