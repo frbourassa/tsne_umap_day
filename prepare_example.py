@@ -116,12 +116,13 @@ def reindex_save_plain_df(df, access_code, folder, types_end,
 
     # Remove the cell names; they are useless and take up a lot of memory
     print("Memory usage of the new MultiIndex with cell names: ")
-    print(celltypes_index.memory_usage(deep=True).sum()/1024**2, "MB")
+    print(celltypes_index.memory_usage(deep=True)/1024**2, "MB")
 
-    df.reset_index(level='Cell', inplace=True, drop=True)
+    ncell = len(celltypes_index.levels[0])
+    celltypes_index.set_levels(levels=range(ncell), level='Cell', inplace=True)
 
     print("Memory usage of the MultiIndex without cell names: ")
-    print(celltypes_index.memory_usage(deep=True).sum()/1024**2, "MB")
+    print(celltypes_index.memory_usage(deep=True)/1024**2, "MB")
 
     inter_time4bis = measure_time()
     print("Time taken to remove cell names : {}".format(inter_time4bis - inter_time4))
@@ -130,6 +131,11 @@ def reindex_save_plain_df(df, access_code, folder, types_end,
     # MultiIndex the cells with the cell type assignment.
     # Convert to a dense DataFrame, it will be faster to sort after.
     df = df.to_dense()
+    print("Memory usage as dense: ")
+    print(df.memory_usage(deep=True).sum()/1024**2, "MB")
+    inter_time4 = measure_time()
+    print("Time taken to convert to dense: {} s".format(inter_time4 - inter_time4bis))
+
     df = df.T
     inter_time5 = measure_time()
     print("Time taken to transpose: {} s".format(inter_time5 - inter_time4))
