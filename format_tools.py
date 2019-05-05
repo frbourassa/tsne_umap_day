@@ -293,8 +293,10 @@ def regroup_levels(frame, groups, level_group=None, axis=1, name=None):
                 DataFrame".format(level_group))
     # If we only have an Index, not a MultiIndex
     else:
+        # We willneed to put the name back into place eventually
+        original_names = list([level_group])  # using list() creates a copy
+        # Slicing functions do not take a level name with a simple Index
         level_group = None
-        original_names = []  # We have an Index
 
     # Split the dataframe, then concatenate with a new level
     blocks = {}
@@ -304,5 +306,8 @@ def regroup_levels(frame, groups, level_group=None, axis=1, name=None):
         blocks[gp] = pd.concat(subgroups, names=[level_group], axis=axis, copy=False)
 
     # Update the order of the level names, return the concatenation of blocks
-    final_names = [name, level_group] + original_names
+    if level_group is not None:
+        final_names = [name, level_group] + original_names
+    else:
+        final_names =  [name] + original_names
     return pd.concat(blocks, axis=axis, names=final_names, copy=False)

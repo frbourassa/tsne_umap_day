@@ -161,10 +161,10 @@ def reindex_save_plain_df(df, access_code, folder, types_end,
     print("\nFull formatted DataFrame:")
     print(df)
     print("\nMemory usage now:")
-    print(df.memory_usage(deep=True).sum()/1024, "kB")
+    print(df.memory_usage(deep=True).sum()/1024**2, "MB")
 
-    # Save the full formatted dataFrame in a pickle file
-    save_object(df, folder + access_code + "_frame_formatted.pkl")
+    # Save a sparse version of the full formatted dataFrame in a pickle file
+    save_object(df.to_sparse(fill_value=0), folder + access_code + "_frame_formatted.pkl")
 
     ## Also, save blocks of the frame, separated by stimulation time,
     # to mimic the situation where we want to stack blocks of dfs.
@@ -184,7 +184,7 @@ def reindex_save_plain_df(df, access_code, folder, types_end,
 
     for i, b in enumerate(blocks):
         bname = "data/blocks/" + access_code + "_stim_" + different_times[i] + ".pkl"
-        save_object(b, bname)
+        save_object(b.to_sparse(fill_value=0), bname)
 
     # Save information about the data, to be able to concat the blocks
     times_name = "data/blocks/" + access_code + "_stim_times.pkl"
