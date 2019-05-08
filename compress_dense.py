@@ -3,6 +3,7 @@ from format_tools import load_object, save_object
 from time import time
 import scipy as sp
 from scipy import sparse
+import numpy as np
 
 
 def convert_by_chunks(df, chunksize=500, dty=np.int16):
@@ -10,6 +11,7 @@ def convert_by_chunks(df, chunksize=500, dty=np.int16):
     # Drop one block of columns at a time from the dataframe
     for i in range(df.shape[1]//chunksize):
         chunk = df.values[:, :chunksize]
+        print("Saved a chunk")
         blocks.append(sp.sparse.csc_matrix(chunk, dtype=dty))
         df.drop(labels=range(i*chunksize, (i+1)*chunksize), axis=1, inplace=True)
         print("Chunk {} done".format(i))
@@ -37,12 +39,14 @@ if __name__ == "__main__":
 
     # Save the values to a sparse matrix, save the indexes separately
     inter2 = time()
-    save_object(idx, "data/GSE102827/GSE102827_frame_index.pkl")
-    save_object(cols, "data/GSE102827/GSE102827_frame_columns.pkl")
+    save_object(df.index, "data/GSE102827/GSE102827_frame_index.pkl")
+    save_object(df.columns, "data/GSE102827/GSE102827_frame_columns.pkl")
     df.reset_index(drop=True, inplace=True)
     df.columns = range(df.shape[1])  # takes up less space
     dty = np.int16
+    print("Starting convert_by_chunks")
     vals = convert_by_chunks(df, chunksize=5000, dty=dty)
+    del df
 
     print("Converted to sparse in {} s".format(inter2 - inter1))
     size = vals.data.nbytes + vals.indices.nbytes + vals.indptr.nbytes
