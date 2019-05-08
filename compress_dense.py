@@ -1,27 +1,32 @@
 import pandas as pd
 from format_tools import load_object, save_object
 from time import time
+import scipy as sp
+from scipy import sparse
 
 if __name__ == "__main__":
-    fname = "data/GSE102827/GSE102827_frame_formatted_dense.pkl"
-    new_f = "data/GSE102827/GSE102827_frame_formatted_sparse.h5"
+    fname = "data/GSE102827/GSE102827_frame_formatted_sparse.pkl"
+    new_f = "data/GSE102827/GSE102827_frame_values_sparse.npz"
 
     # Load the object
     start = time()
     df = load_object(fname)
     inter1 = time()
-    df = df.loc[:1000, :1000]  # Make the testing faster.
     print("Loaded the object in {} s".format(inter1 - start))
-    print(df.shape)
-    print("Dense memory usage:", df.memory_usage.sum()/1024**2, "MB")
-    # Convert to sparse
-    df = df.to_sparse(fill_value=0)
+    print("Shape: ", df.shape)
+    print("Type: ", type(df))
+    print("DataFrame memory usage:", df.memory_usage().sum()/1024**2, "MB")
+
+    # Save the values to a sparse matrix, save the indexes separately
+    vals = sp.sparse.csc_matrix(df.values, dtype=df.values.dtype)
     inter2 = time()
     print("Converted to sparse in {} s".format(inter2 - inter1))
-    print("Sparse memory usage:", df.memory_usage.sum()/1024**2, "MB")
-
+    size = vals.data.nbytes + vals.indices.nbytes + vals.indptr.nbytes
+    print('{:.2f} MB of data'.format(size / 1024 ** 2))
 
     # Save as a hdf file for faster import later on
-    df.to_hdf(new_f, key='df', mode='w', compression=9, complib='blosc')
+    sp.sparse.save_npz(new_f, vals)
+    save_object(df.index, "data/GSE102827/GSE102827_frame_index.pkl")
+    save_object(df.columns, "data/GSE102827/GSE102827_frame_columns.pkl")
     final = time()
-    print("Finished saving as HDF5 in {} s".format(final - inter2))
+    print("Finished saving as npz in {} s".format(final - inter2))
