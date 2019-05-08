@@ -18,7 +18,11 @@ if __name__ == "__main__":
     print("DataFrame memory usage:", df.memory_usage().sum()/1024**2, "MB")
 
     # Save the values to a sparse matrix, save the indexes separately
-    vals = sp.sparse.csc_matrix(df.values, dtype=df.values.dtype)
+    idx, cols = df.index, df.columns
+    vals = df.values
+    dty = vals.dtype
+    del df  # need to free memory, can't copy everything
+    vals = sp.sparse.csc_matrix(vals, dtype=dty)
     inter2 = time()
     print("Converted to sparse in {} s".format(inter2 - inter1))
     size = vals.data.nbytes + vals.indices.nbytes + vals.indptr.nbytes
@@ -26,7 +30,7 @@ if __name__ == "__main__":
 
     # Save as a hdf file for faster import later on
     sp.sparse.save_npz(new_f, vals)
-    save_object(df.index, "data/GSE102827/GSE102827_frame_index.pkl")
-    save_object(df.columns, "data/GSE102827/GSE102827_frame_columns.pkl")
+    save_object(idx, "data/GSE102827/GSE102827_frame_index.pkl")
+    save_object(cols, "data/GSE102827/GSE102827_frame_columns.pkl")
     final = time()
     print("Finished saving as npz in {} s".format(final - inter2))
